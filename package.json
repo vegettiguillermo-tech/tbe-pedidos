@@ -1,8 +1,8 @@
 {
   "name": "tbe-pedidos",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "private": true,
-  "description": "TBE Pedidos - carribar con tablet, WhatsApp Business, delivery y caja diaria",
+  "description": "TBE Pedidos - carribar con tablet, WhatsApp Business, demo protegida, horario de salida, delivery y caja diaria",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

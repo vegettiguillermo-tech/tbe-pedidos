@@ -20,6 +20,7 @@ const META_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || '';
 const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v26.0';
 const META_APP_SECRET = process.env.WHATSAPP_APP_SECRET || '';
 const TBE_ADMIN_KEY = process.env.TBE_ADMIN_KEY || '';
+const DEMO_ACCESS_KEY = process.env.DEMO_ACCESS_KEY || '';
 const PUBLIC_BASE_URL = String(process.env.PUBLIC_BASE_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, '');
 const BUSINESS_TIMEZONE = process.env.BUSINESS_TIMEZONE || 'America/Argentina/Buenos_Aires';
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -45,8 +46,18 @@ function loadOrSeed(targetFile, bundledName, fallback) {
   return seed;
 }
 
-let store = loadOrSeed(STORE_FILE, 'store.json', { businessName: 'TBE Pedidos', categories: [], products: [] });
+let store = loadOrSeed(STORE_FILE, 'store.json', { businessName: 'TBE Pedidos', prepMinutes: 25, categories: [], products: [] });
+if (!Number.isFinite(Number(store.prepMinutes))) { store.prepMinutes = 25; writeJson(STORE_FILE, store); }
 let orders = loadOrSeed(ORDERS_FILE, 'orders.json', []);
+let migratedOrders = false;
+for (const o of orders) {
+  if (!o.readyAt) {
+    const base = new Date(o.createdAt || Date.now());
+    o.readyAt = new Date((Number.isFinite(base.getTime()) ? base.getTime() : Date.now()) + Math.max(0, Number(store.prepMinutes || 25)) * 60000).toISOString();
+    migratedOrders = true;
+  }
+}
+if (migratedOrders) writeJson(ORDERS_FILE, orders);
 let cash = loadOrSeed(CASH_FILE, 'cash.json', { current: null, closures: [] });
 if (!cash || typeof cash !== 'object') cash = { current: null, closures: [] };
 if (!Array.isArray(cash.closures)) cash.closures = [];
@@ -62,7 +73,7 @@ function json(res, status, data) {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-TBE-Key',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-TBE-Key, X-Demo-Key',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS'
   });
   res.end(body);
@@ -113,6 +124,17 @@ function requireAdmin(req, res, u) {
   json(res, 401, { ok: false, error: 'Clave del servidor incorrecta o no configurada' });
   return false;
 }
+function hasDemoAccess(req, u) {
+  if (!ENABLE_SIMULATOR) return false;
+  if (!DEMO_ACCESS_KEY) return NODE_ENV !== 'production';
+  const provided = String(req.headers['x-demo-key'] || (u && u.searchParams.get('demoKey')) || '');
+  return safeEqual(provided, DEMO_ACCESS_KEY);
+}
+function requireDemo(req, res, u) {
+  if (hasDemoAccess(req, u)) return true;
+  json(res, 401, { ok: false, error: 'Clave de demo incorrecta' });
+  return false;
+}
 function verifyMetaSignature(rawBody, signatureHeader) {
   if (!META_APP_SECRET) return NODE_ENV !== 'production';
   if (!signatureHeader || !String(signatureHeader).startsWith('sha256=')) return false;
@@ -131,6 +153,18 @@ function markProcessedMessage(id) {
 }
 function money(n) { return '$' + Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 }); }
 function nowIso() { return new Date().toISOString(); }
+function prepMinutesValue() { return Math.min(240, Math.max(0, Math.round(Number(store.prepMinutes == null ? 25 : store.prepMinutes) || 0))); }
+function defaultReadyAt() { return new Date(Date.now() + prepMinutesValue() * 60000).toISOString(); }
+function normalizeReadyAt(value) {
+  if (!value) return defaultReadyAt();
+  const d = new Date(value);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : defaultReadyAt();
+}
+function businessTimeLabel(value) {
+  try {
+    return new Intl.DateTimeFormat('es-AR', { timeZone: BUSINESS_TIMEZONE, hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(value));
+  } catch (_) { return ''; }
+}
 function nextOrderNumber() {
   const max = orders.reduce((m, o) => Math.max(m, Number(o.number || 0)), 0);
   return max + 1;
@@ -258,7 +292,7 @@ function currentCashPayload() {
   return { current, summary: cashSummary(current), timezone: BUSINESS_TIMEZONE };
 }
 
-function createOrder({ customerName, phone = '', source = 'TABLET', items = [], notes = '', deliveryType = 'RETIRO', address = '', paymentMethod = 'A_DEFINIR' }) {
+function createOrder({ customerName, phone = '', source = 'TABLET', items = [], notes = '', deliveryType = 'RETIRO', address = '', paymentMethod = 'A_DEFINIR', readyAt = '' }) {
   const cleanItems = [];
   let total = 0;
   for (const it of items) {
@@ -289,6 +323,7 @@ function createOrder({ customerName, phone = '', source = 'TABLET', items = [], 
     notes: String(notes || '').trim().slice(0, 500),
     total,
     createdAt: nowIso(),
+    readyAt: normalizeReadyAt(readyAt),
     updatedAt: nowIso(),
     readyNotifiedAt: null
   };
@@ -327,7 +362,7 @@ function serviceSummary(session) {
   return session.deliveryType === 'DELIVERY' ? `Delivery\nDirección: ${session.address}` : 'Retiro en el carribar';
 }
 function paymentLabel(v) { return v === 'EFECTIVO' ? 'Efectivo' : v === 'ELECTRONICO' ? 'Electrónico' : 'A definir'; }
-function categoriesMessage(page = 0) {
+function categoriesMessage(page = 0, lead = '') {
   const cats = store.categories.filter(c => c.active !== false && getActiveProducts().some(p => String(p.categoryId) === String(c.id)));
   const pageNum = Math.max(0, Number(page || 0));
   const start = pageNum * 9;
@@ -336,7 +371,7 @@ function categoriesMessage(page = 0) {
   if (start + 9 < cats.length) rows.push({ id: `catpage:${pageNum + 1}`, title: 'Más categorías', description: 'Ver más opciones' });
   return {
     type: 'list',
-    text: pageNum ? `Elegí una categoría (página ${pageNum + 1}):` : 'Elegí una categoría:',
+    text: (lead ? lead + '\n' : '') + (pageNum ? `Elegí una categoría (página ${pageNum + 1}):` : 'Elegí una categoría:'),
     buttonText: 'Ver menú',
     rows
   };
@@ -357,20 +392,20 @@ Elegí un producto:`,
     rows
   };
 }
-function serviceButtons() {
+function serviceButtons(name = '') {
   return {
     type: 'buttons',
-    text: '¿Cómo querés recibir el pedido?',
+    text: name ? `Perfecto, ${name}. ¿Retiro o delivery?` : '¿Retiro o delivery?',
     buttons: [
       { id: 'service:pickup', title: 'Retiro' },
       { id: 'service:delivery', title: 'Delivery' }
     ]
   };
 }
-function paymentButtons() {
+function paymentButtons(session) {
   return {
     type: 'buttons',
-    text: '¿Cómo vas a pagar?',
+    text: `${cartSummary(session)}\n\n${serviceSummary(session)}\n\nElegí cómo vas a pagar para confirmar:`,
     buttons: [
       { id: 'payment:cash', title: 'Efectivo' },
       { id: 'payment:electronic', title: 'Electrónico' },
@@ -381,7 +416,7 @@ function paymentButtons() {
 function postAddButtons(productName) {
   return {
     type: 'buttons',
-    text: `Agregué ${productName}. ¿Qué hacemos ahora?`,
+    text: `✅ Agregado: ${productName}. ¿Seguimos?`,
     buttons: [
       { id: 'action:more', title: 'Agregar otro' },
       { id: 'action:cart', title: 'Ver pedido' },
@@ -399,6 +434,23 @@ function confirmButtons(session) {
       { id: 'action:cancel', title: 'Cancelar' }
     ]
   };
+}
+
+function finishSessionOrder(phone, session, paymentMethod) {
+  session.paymentMethod = paymentMethod;
+  const order = createOrder({
+    customerName: session.name, phone, source: 'WHATSAPP', items: session.cart,
+    deliveryType: session.deliveryType, address: session.address, paymentMethod: session.paymentMethod
+  });
+  resetSession(phone);
+  const deliveryLine = order.deliveryType === 'DELIVERY' ? `Delivery: ${order.address}` : 'Retiro en el carribar';
+  const salida = businessTimeLabel(order.readyAt);
+  return [{ type: 'text', text: `✅ Pedido #${order.number} confirmado.
+${order.customerName} · ${deliveryLine}
+Pago: ${paymentLabel(order.paymentMethod)} · Total: ${money(order.total)}
+🕒 Salida estimada: ${salida} hs
+
+Ya lo recibió el carribar.` }];
 }
 
 function processCustomerInput(phone, input) {
@@ -421,9 +473,7 @@ function processCustomerInput(phone, input) {
     if (!textValue) return [{ type: 'text', text: `¡Hola! Bienvenido a ${store.businessName}. ¿Cómo te llamas?` }];
     s.name = textValue.slice(0, 60);
     s.stage = 'ASK_SERVICE';
-    messages.push({ type: 'text', text: `Perfecto, ${s.name}. Vamos a armar tu pedido.` });
-    messages.push(serviceButtons());
-    return messages;
+    return [serviceButtons(s.name)];
   }
 
   if (interactiveId === 'service:pickup') {
@@ -441,7 +491,7 @@ function processCustomerInput(phone, input) {
     if (!textValue || textValue.length < 4) return [{ type: 'text', text: 'Necesito una dirección para poder enviar el delivery. Escribila completa, por favor.' }];
     s.address = textValue.slice(0, 180);
     s.stage = 'CHOOSE_CATEGORY';
-    return [{ type: 'text', text: `Dirección: ${s.address}` }, categoriesMessage()];
+    return [categoriesMessage(0, `🛵 Delivery a ${s.address}`)];
   }
 
   if (interactiveId.startsWith('catpage:')) {
@@ -482,9 +532,9 @@ function processCustomerInput(phone, input) {
   }
   if (interactiveId === 'action:cart') {
     if (!s.cart.length) return [{ type: 'text', text: 'Todavía no agregaste productos.' }, categoriesMessage()];
-    return [{ type: 'text', text: cartSummary(s) }, {
+    return [{
       type: 'buttons',
-      text: '¿Qué hacemos ahora?',
+      text: `${cartSummary(s)}\n\n¿Qué hacemos ahora?`,
       buttons: [
         { id: 'action:more', title: 'Agregar otro' },
         { id: 'action:finish', title: 'Finalizar' },
@@ -495,17 +545,15 @@ function processCustomerInput(phone, input) {
   if (interactiveId === 'action:finish') {
     if (!s.cart.length) return [{ type: 'text', text: 'Todavía no agregaste productos.' }, categoriesMessage()];
     s.stage = 'ASK_PAYMENT';
-    return [paymentButtons()];
+    return [paymentButtons(s)];
   }
   if (interactiveId === 'payment:cash') {
-    s.paymentMethod = 'EFECTIVO';
-    s.stage = 'CONFIRM';
-    return [confirmButtons(s)];
+    if (!s.cart.length) return [{ type: 'text', text: 'El pedido está vacío.' }, categoriesMessage()];
+    return finishSessionOrder(phone, s, 'EFECTIVO');
   }
   if (interactiveId === 'payment:electronic') {
-    s.paymentMethod = 'ELECTRONICO';
-    s.stage = 'CONFIRM';
-    return [confirmButtons(s)];
+    if (!s.cart.length) return [{ type: 'text', text: 'El pedido está vacío.' }, categoriesMessage()];
+    return finishSessionOrder(phone, s, 'ELECTRONICO');
   }
   if (interactiveId === 'action:cancel') {
     resetSession(phone);
@@ -513,34 +561,20 @@ function processCustomerInput(phone, input) {
   }
   if (interactiveId === 'action:confirm') {
     if (!s.cart.length) return [{ type: 'text', text: 'El pedido está vacío.' }, categoriesMessage()];
-    if (!s.deliveryType) { s.stage = 'ASK_SERVICE'; return [serviceButtons()]; }
+    if (!s.deliveryType) { s.stage = 'ASK_SERVICE'; return [serviceButtons(s.name)]; }
     if (s.deliveryType === 'DELIVERY' && !s.address) { s.stage = 'ASK_ADDRESS'; return [{ type: 'text', text: 'Antes de confirmar, escribí la dirección del delivery.' }]; }
-    if (!s.paymentMethod) { s.stage = 'ASK_PAYMENT'; return [paymentButtons()]; }
-    const order = createOrder({
-      customerName: s.name,
-      phone,
-      source: 'WHATSAPP',
-      items: s.cart,
-      deliveryType: s.deliveryType,
-      address: s.address,
-      paymentMethod: s.paymentMethod
-    });
-    resetSession(phone);
-    const deliveryLine = order.deliveryType === 'DELIVERY' ? `Delivery: ${order.address}` : 'Retiro en el carribar';
-    return [{
-      type: 'text',
-      text: `✅ Pedido #${order.number} confirmado.\nNombre: ${order.customerName}\n${deliveryLine}\nPago: ${paymentLabel(order.paymentMethod)}\nTotal: ${money(order.total)}\n\nYa lo recibió el carribar.`
-    }];
+    if (!s.paymentMethod) { s.stage = 'ASK_PAYMENT'; return [paymentButtons(s)]; }
+    return finishSessionOrder(phone, s, s.paymentMethod);
   }
 
   if (textValue) {
     if (['menu', 'menú', 'pedido', 'hola', 'buenas'].includes(textValue.toLowerCase())) {
       if (!s.name) { s.stage = 'ASK_NAME'; return [{ type: 'text', text: `¡Hola! Bienvenido a ${store.businessName}. ¿Cómo te llamas?` }]; }
-      if (!s.deliveryType) { s.stage = 'ASK_SERVICE'; return [serviceButtons()]; }
+      if (!s.deliveryType) { s.stage = 'ASK_SERVICE'; return [serviceButtons(s.name)]; }
       return [categoriesMessage()];
     }
-    if (s.stage === 'ASK_SERVICE') return [serviceButtons()];
-    if (s.stage === 'ASK_PAYMENT') return [paymentButtons()];
+    if (s.stage === 'ASK_SERVICE') return [serviceButtons(s.name)];
+    if (s.stage === 'ASK_PAYMENT') return [paymentButtons(s)];
     return [{ type: 'text', text: 'Usá las opciones del menú para continuar.' }, categoriesMessage()];
   }
 
@@ -655,7 +689,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-TBE-Key',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-TBE-Key, X-Demo-Key',
       'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS'
     });
     return res.end();
@@ -664,32 +698,48 @@ const server = http.createServer(async (req, res) => {
   try {
     const isSimulatorApi = pathname.startsWith('/api/sim/');
     const publicApi = req.method === 'GET' && (pathname === '/api/health' || pathname === '/api/store');
-    if (pathname.startsWith('/api/') && !publicApi && !isSimulatorApi && !requireAdmin(req, res, u)) return;
-    if (isSimulatorApi && !ENABLE_SIMULATOR) return notFound(res);
+    if (isSimulatorApi) {
+      if (!ENABLE_SIMULATOR) return notFound(res);
+      if (!requireDemo(req, res, u)) return;
+    } else if (pathname.startsWith('/api/') && !publicApi && !requireAdmin(req, res, u)) return;
     if (req.method === 'GET' && pathname === '/api/health') return json(res, 200, {
       ok: true,
       businessName: store.businessName,
-      version: '3.0.0-prod',
+      version: '4.0.0-prod',
       whatsappConfigured: !!(META_TOKEN && META_PHONE_NUMBER_ID),
       timezone: BUSINESS_TIMEZONE
     });
     if (req.method === 'GET' && pathname === '/api/store') return json(res, 200, { ok: true, store });
     if (req.method === 'PUT' && pathname === '/api/store') {
       const b = await parseBody(req);
-      const businessName = String(b.businessName || '').trim();
-      if (!businessName) return json(res, 400, { ok: false, error: 'Ingresá el nombre del carribar' });
-      store.businessName = businessName.slice(0, 80);
+      let changed = false;
+      if (b.businessName != null) {
+        const businessName = String(b.businessName || '').trim();
+        if (!businessName) return json(res, 400, { ok: false, error: 'Ingresá el nombre del carribar' });
+        store.businessName = businessName.slice(0, 80);
+        changed = true;
+      }
+      if (b.prepMinutes != null) {
+        const mins = Math.round(Number(b.prepMinutes));
+        if (!Number.isFinite(mins) || mins < 0 || mins > 240) return json(res, 400, { ok: false, error: 'El tiempo de preparación debe estar entre 0 y 240 minutos' });
+        store.prepMinutes = mins;
+        changed = true;
+      }
+      if (!changed) return json(res, 400, { ok: false, error: 'No hay cambios para guardar' });
       writeJson(STORE_FILE, store);
       broadcast('store:changed', store);
       return json(res, 200, { ok: true, store });
     }
     if (req.method === 'GET' && pathname === '/api/system/info') return json(res, 200, {
       ok: true,
-      version: '3.0.0-prod',
+      version: '4.0.0-prod',
       environment: NODE_ENV,
       timezone: BUSINESS_TIMEZONE,
       webhookUrl: (PUBLIC_BASE_URL || `${u.protocol}//${req.headers.host}`) + '/webhook',
       simulatorEnabled: ENABLE_SIMULATOR,
+      demoKeyConfigured: !!DEMO_ACCESS_KEY,
+      demoUrl: (PUBLIC_BASE_URL || `${u.protocol}//${req.headers.host}`) + '/demo-whatsapp',
+      prepMinutes: prepMinutesValue(),
       adminKeyConfigured: !!TBE_ADMIN_KEY,
       whatsapp: {
         configured: !!(META_TOKEN && META_PHONE_NUMBER_ID),
@@ -774,10 +824,25 @@ const server = http.createServer(async (req, res) => {
         notes: b.notes,
         deliveryType: b.deliveryType,
         address: b.address,
-        paymentMethod: b.paymentMethod
+        paymentMethod: b.paymentMethod,
+        readyAt: b.readyAt
       });
       return json(res, 201, { ok: true, order });
     }
+    const orderReadyMatch = pathname.match(/^\/api\/orders\/([^/]+)\/ready-at$/);
+    if (orderReadyMatch && req.method === 'PATCH') {
+      const b = await parseBody(req);
+      const o = orders.find(x => x.id === orderReadyMatch[1]);
+      if (!o) return notFound(res);
+      const d = new Date(b.readyAt);
+      if (!b.readyAt || !Number.isFinite(d.getTime())) return json(res, 400, { ok: false, error: 'Hora de salida inválida' });
+      o.readyAt = d.toISOString();
+      o.updatedAt = nowIso();
+      writeJson(ORDERS_FILE, orders);
+      broadcast('order:updated', o);
+      return json(res, 200, { ok: true, order: o });
+    }
+
     const orderStatusMatch = pathname.match(/^\/api\/orders\/([^/]+)\/status$/);
     if (orderStatusMatch && req.method === 'PATCH') {
       const b = await parseBody(req);
@@ -836,6 +901,21 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === 'GET' && pathname === '/api/sim/status') return json(res, 200, { ok: true, businessName: store.businessName, prepMinutes: prepMinutesValue() });
+    if (req.method === 'GET' && pathname === '/api/sim/stream') {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.write(`event: hello\ndata: ${JSON.stringify({ ok: true, time: nowIso() })}\n\n`);
+      sseClients.add(res);
+      const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (_) {} }, 20000);
+      req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
+      return;
+    }
+
     if (req.method === 'POST' && pathname === '/api/sim/message') {
       const b = await parseBody(req);
       const phone = normalizePhone(b.phone || '5491100000000');
@@ -866,7 +946,10 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (pathname === '/simulator.html' && !ENABLE_SIMULATOR) return notFound(res);
+    if (pathname === '/simulator.html' || pathname === '/demo-whatsapp' || pathname === '/demo-whatsapp/') {
+      if (!ENABLE_SIMULATOR) return notFound(res);
+      return serveStatic(res, '/simulator.html');
+    }
     return serveStatic(res, pathname);
   } catch (e) {
     console.error(e);

@@ -12,6 +12,9 @@ import java.io.BufferedOutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.text.NumberFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.Executors
 
@@ -53,6 +56,7 @@ class PrinterBridge(private val ctx: Context) {
                 val notes = order.optString("notes", "")
                 val total = order.optDouble("total", 0.0)
                 val createdAt = order.optString("createdAt", "")
+                val readyAt = order.optString("readyAt", "")
                 val deliveryType = order.optString("deliveryType", "RETIRO")
                 val address = order.optString("address", "")
                 val paymentMethod = order.optString("paymentMethod", "A_DEFINIR")
@@ -84,6 +88,13 @@ class PrinterBridge(private val ctx: Context) {
                     line("PAGO: ${paymentLabel(paymentMethod)}")
                     if (phone.isNotBlank()) line("TEL: $phone")
                     if (createdAt.isNotBlank()) line("FECHA: ${formatIso(createdAt)}")
+                    if (readyAt.isNotBlank()) {
+                        center(); bold(true)
+                        cmd(0x1D, 0x21, 0x11)
+                        line("SALIDA ${formatTimeIso(readyAt)}")
+                        cmd(0x1D, 0x21, 0x00)
+                        bold(false); left()
+                    }
                     line("-".repeat(COLS))
 
                     if (items != null) {
@@ -260,7 +271,19 @@ class PrinterBridge(private val ctx: Context) {
     }
 
     private fun formatIso(v: String): String {
-        return v.replace('T', ' ').replace("Z", "").take(19)
+        return try {
+            Instant.parse(v).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+        } catch (_: Exception) {
+            v.replace('T', ' ').replace("Z", "").take(19)
+        }
+    }
+
+    private fun formatTimeIso(v: String): String {
+        return try {
+            Instant.parse(v).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))
+        } catch (_: Exception) {
+            v.replace('T', ' ').replace("Z", "").takeLast(8).take(5)
+        }
     }
 
     private fun formatMoney(v: Double): String {

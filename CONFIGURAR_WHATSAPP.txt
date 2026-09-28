@@ -32,7 +32,8 @@ VARIABLES EN RENDER
 NODE_ENV=production
 DATA_DIR=/var/data
 BUSINESS_TIMEZONE=America/Argentina/Buenos_Aires
-ENABLE_SIMULATOR=false
+ENABLE_SIMULATOR=true
+DEMO_ACCESS_KEY=<clave exclusiva para la demostracion>
 TBE_ADMIN_KEY=<una clave larga elegida por vos>
 WHATSAPP_TOKEN=<token Meta>
 WHATSAPP_PHONE_NUMBER_ID=<phone number id>
@@ -89,3 +90,23 @@ NOTA SOBRE EL MENSAJE "LISTO"
 El aviso normal de pedido listo es un mensaje de atencion al cliente generado dentro
 de la conversacion iniciada por el cliente. Si en el futuro se quisiera enviar mensajes
 fuera de la ventana permitida por Meta, habria que usar una plantilla aprobada.
+
+
+DEMO WHATSAPP
+-------------
+La version R4 incluye una demo protegida que usa exactamente el mismo motor de pedidos.
+
+URL:
+  https://TU-SERVICIO.onrender.com/demo-whatsapp
+
+El visitante ingresa DEMO_ACCESS_KEY. Esa clave es distinta de TBE_ADMIN_KEY y se puede
+compartir para una demostracion sin dar acceso administrativo a la tablet.
+
+El pedido creado desde la demo aparece en la tablet como un pedido de WhatsApp. Al ponerlo
+en LISTO, el mensaje de pedido listo vuelve a aparecer dentro de la demo.
+
+FLUJO CORTO R4
+---------------
+Para reducir mensajes, al terminar de elegir productos el resumen y la forma de pago se
+muestran juntos. Al tocar Efectivo o Electronico, el pedido queda confirmado directamente.
+La confirmacion informa tambien la hora estimada de salida.

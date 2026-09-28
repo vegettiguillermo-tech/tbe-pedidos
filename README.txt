@@ -84,3 +84,13 @@ IMPORTANTE
 ----------
 No publicar ni enviar a terceros los valores de WHATSAPP_TOKEN, WHATSAPP_APP_SECRET,
 WHATSAPP_VERIFY_TOKEN ni TBE_ADMIN_KEY.
+
+
+NOVEDADES R4
+------------
+- Demo WhatsApp de produccion: /demo-whatsapp, protegida por DEMO_ACCESS_KEY.
+- Flujo de WhatsApp mas corto: el medio de pago confirma el pedido directamente.
+- Tiempo de preparacion configurable en minutos.
+- Hora de salida calculada automaticamente en cada pedido.
+- Hora de salida editable desde la pantalla Pedidos.
+- Hora de salida visible en tablet, confirmacion de WhatsApp y ticket de cocina.

@@ -18,7 +18,9 @@ services:
       - key: BUSINESS_TIMEZONE
         value: America/Argentina/Buenos_Aires
       - key: ENABLE_SIMULATOR
-        value: "false"
+        value: "true"
+      - key: DEMO_ACCESS_KEY
+        sync: false
       - key: TBE_ADMIN_KEY
         sync: false
       - key: WHATSAPP_TOKEN

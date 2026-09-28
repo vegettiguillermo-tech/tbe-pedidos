@@ -1,20 +1,91 @@
 {
   "businessName": "Carribar Demo",
   "categories": [
-    { "id": "hamb", "name": "🍔 Hamburguesas", "active": true },
-    { "id": "lomo", "name": "🥪 Lomitos", "active": true },
-    { "id": "papas", "name": "🍟 Papas", "active": true },
-    { "id": "bebidas", "name": "🥤 Bebidas", "active": true }
+    {
+      "id": "hamb",
+      "name": "🍔 Hamburguesas",
+      "active": true
+    },
+    {
+      "id": "lomo",
+      "name": "🥪 Lomitos",
+      "active": true
+    },
+    {
+      "id": "papas",
+      "name": "🍟 Papas",
+      "active": true
+    },
+    {
+      "id": "bebidas",
+      "name": "🥤 Bebidas",
+      "active": true
+    }
   ],
   "products": [
-    { "id": "h1", "categoryId": "hamb", "name": "Hamburguesa simple", "price": 8000, "active": true },
-    { "id": "h2", "categoryId": "hamb", "name": "Hamburguesa doble", "price": 10000, "active": true },
-    { "id": "h3", "categoryId": "hamb", "name": "Hamburguesa completa", "price": 12000, "active": true },
-    { "id": "l1", "categoryId": "lomo", "name": "Lomito simple", "price": 10000, "active": true },
-    { "id": "l2", "categoryId": "lomo", "name": "Lomito completo", "price": 13000, "active": true },
-    { "id": "p1", "categoryId": "papas", "name": "Papas chicas", "price": 4000, "active": true },
-    { "id": "p2", "categoryId": "papas", "name": "Papas grandes", "price": 6000, "active": true },
-    { "id": "b1", "categoryId": "bebidas", "name": "Coca Cola", "price": 3000, "active": true },
-    { "id": "b2", "categoryId": "bebidas", "name": "Agua", "price": 2200, "active": true }
-  ]
+    {
+      "id": "h1",
+      "categoryId": "hamb",
+      "name": "Hamburguesa simple",
+      "price": 8000,
+      "active": true
+    },
+    {
+      "id": "h2",
+      "categoryId": "hamb",
+      "name": "Hamburguesa doble",
+      "price": 10000,
+      "active": true
+    },
+    {
+      "id": "h3",
+      "categoryId": "hamb",
+      "name": "Hamburguesa completa",
+      "price": 12000,
+      "active": true
+    },
+    {
+      "id": "l1",
+      "categoryId": "lomo",
+      "name": "Lomito simple",
+      "price": 10000,
+      "active": true
+    },
+    {
+      "id": "l2",
+      "categoryId": "lomo",
+      "name": "Lomito completo",
+      "price": 13000,
+      "active": true
+    },
+    {
+      "id": "p1",
+      "categoryId": "papas",
+      "name": "Papas chicas",
+      "price": 4000,
+      "active": true
+    },
+    {
+      "id": "p2",
+      "categoryId": "papas",
+      "name": "Papas grandes",
+      "price": 6000,
+      "active": true
+    },
+    {
+      "id": "b1",
+      "categoryId": "bebidas",
+      "name": "Coca Cola",
+      "price": 3000,
+      "active": true
+    },
+    {
+      "id": "b2",
+      "categoryId": "bebidas",
+      "name": "Agua",
+      "price": 2200,
+      "active": true
+    }
+  ],
+  "prepMinutes": 25
 }

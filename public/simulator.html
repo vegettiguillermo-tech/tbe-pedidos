@@ -1,31 +1,45 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Simulador WhatsApp - TBE Pedidos</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Demo WhatsApp · TBE Pedidos</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#d9dbd5;font-family:Arial,Helvetica,sans-serif;color:#111}.top{height:70px;background:#075e54;color:white;display:flex;align-items:center;padding:0 18px;font-weight:800;font-size:20px;gap:12px}.top span{font-size:13px;font-weight:400;opacity:.9}.wrap{height:calc(100vh - 70px);max-width:760px;margin:auto;background:#efeae2;display:flex;flex-direction:column;box-shadow:0 0 30px #0002}.toolbar{padding:8px;background:#f0f2f5;display:flex;justify-content:space-between;align-items:center}.toolbar button{border:0;border-radius:8px;padding:9px 12px;font-weight:700}.chat{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:8px}.msg{max-width:82%;padding:9px 11px;border-radius:10px;white-space:pre-wrap;line-height:1.35;box-shadow:0 1px 2px #0002}.bot{background:white;align-self:flex-start}.me{background:#d9fdd3;align-self:flex-end}.system{background:#fff3c4;align-self:center;font-size:12px}.opts{align-self:flex-start;display:flex;flex-direction:column;gap:6px;max-width:82%;width:350px}.opts button{background:white;border:1px solid #d1d5db;border-radius:9px;padding:10px;text-align:left;font-weight:700}.send{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px;background:#f0f2f5}.send input{border:0;border-radius:999px;padding:13px 16px;font-size:16px}.send button{width:48px;border:0;border-radius:50%;background:#00a884;color:white;font-size:22px}.status{font-size:12px;color:#475569}.ok{color:#15803d}
+*{box-sizing:border-box}body{margin:0;background:#d9dbd5;font-family:Arial,Helvetica,sans-serif;color:#111;height:100vh;overflow:hidden}.shell{height:100vh;max-width:760px;margin:auto;background:#efeae2;display:flex;flex-direction:column;box-shadow:0 0 30px #0002}.top{height:68px;background:#075e54;color:#fff;display:flex;align-items:center;padding:0 14px;gap:11px}.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#075e54;font-size:22px}.title{font-weight:800;font-size:17px}.sub{font-size:12px;opacity:.9;margin-top:2px}.toolbar{padding:7px 10px;background:#f0f2f5;display:flex;justify-content:space-between;align-items:center;gap:8px}.toolbar button{border:0;border-radius:8px;padding:9px 11px;font-weight:700;background:#fff}.status{font-size:12px;color:#475569}.status.ok{color:#15803d}.chat{flex:1;overflow:auto;padding:18px 12px;background-color:#efeae2;background-image:radial-gradient(#00000008 1px,transparent 1px);background-size:16px 16px;display:flex;flex-direction:column;gap:7px}.msg{max-width:84%;padding:9px 11px 7px;border-radius:9px;white-space:pre-wrap;line-height:1.35;box-shadow:0 1px 2px #0002;font-size:15px}.bot{background:#fff;align-self:flex-start}.me{background:#d9fdd3;align-self:flex-end}.system{background:#fff3c4;align-self:center;font-size:12px;text-align:center}.opts{align-self:flex-start;display:flex;flex-direction:column;gap:5px;max-width:84%;width:min(360px,84vw)}.opts button{background:#fff;border:1px solid #d1d5db;border-radius:9px;padding:10px;text-align:left;font-weight:700;color:#087e6c}.send{display:grid;grid-template-columns:1fr auto;gap:8px;padding:9px;background:#f0f2f5}.send input{border:0;border-radius:999px;padding:13px 16px;font-size:16px;outline:none}.send button{width:48px;border:0;border-radius:50%;background:#00a884;color:#fff;font-size:21px}.login{position:fixed;inset:0;background:#0b141acc;display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}.login.hidden{display:none}.loginbox{width:min(420px,100%);background:#fff;border-radius:16px;padding:22px;box-shadow:0 20px 60px #0006}.loginbox h2{margin:0 0 8px}.loginbox p{color:#64748b;line-height:1.4}.loginbox input{width:100%;padding:13px;border:1px solid #cbd5e1;border-radius:9px;font-size:17px}.loginbox button{width:100%;margin-top:10px;border:0;border-radius:9px;background:#00a884;color:white;padding:12px;font-weight:800}.error{color:#b91c1c;font-size:13px;min-height:18px;margin-top:8px}
 </style>
 </head>
 <body>
-<div class="top">💬 WhatsApp simulado <span>Cliente de prueba</span></div>
-<div class="wrap">
-  <div class="toolbar"><div class="status" id="status">Conectando...</div><button onclick="resetChat()">↻ Reiniciar conversación</button></div>
+<div class="shell">
+  <div class="top"><div class="avatar">🍔</div><div><div id="businessName" class="title">Carribar</div><div class="sub">Demo de pedidos por WhatsApp</div></div></div>
+  <div class="toolbar"><div class="status" id="status">● Esperando conexión</div><button onclick="resetChat()">↻ Reiniciar</button></div>
   <div id="chat" class="chat"></div>
-  <div class="send"><input id="text" placeholder="Escribí un mensaje..." onkeydown="if(event.key==='Enter')sendText()"><button onclick="sendText()">➤</button></div>
+  <div class="send"><input id="text" placeholder="Escribí un mensaje..." autocomplete="off" onkeydown="if(event.key==='Enter')sendText()"><button onclick="sendText()">➤</button></div>
+</div>
+<div id="login" class="login">
+  <div class="loginbox">
+    <h2>Demo WhatsApp</h2>
+    <p>Ingresá la clave de demostración del carribar. Esta demo usa el mismo menú y genera pedidos reales en la tablet.</p>
+    <input id="demoKeyInput" type="password" placeholder="Clave de demo" onkeydown="if(event.key==='Enter')loginDemo()">
+    <button onclick="loginDemo()">Entrar a la demo</button>
+    <div id="loginError" class="error"></div>
+  </div>
 </div>
 <script>
-const phone='5491100000000';
+let demoKey=localStorage.getItem('tbe_demo_key')||'';
+let stream=null;
+let phone=sessionStorage.getItem('tbe_demo_phone');
+if(!phone){phone='54911'+String(Math.floor(10000000+Math.random()*89999999));sessionStorage.setItem('tbe_demo_phone',phone)}
 const chat=document.getElementById('chat');
 function add(text,who='bot'){const d=document.createElement('div');d.className='msg '+who;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight}
-function buttons(rows){const box=document.createElement('div');box.className='opts';for(const r of rows){const b=document.createElement('button');b.textContent=r.title+(r.description?' • '+r.description:'');b.onclick=()=>{box.remove();sendInteractive(r.id,r.title)};box.appendChild(b)}chat.appendChild(box);chat.scrollTop=chat.scrollHeight}
-function renderReplies(replies){for(const m of replies||[]){add(m.text,'bot');if(m.type==='buttons')buttons(m.buttons||[]);if(m.type==='list')buttons(m.rows||[])}}
-async function call(input){try{const r=await fetch('/api/sim/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,input})});const d=await r.json();renderReplies(d.replies)}catch(e){add('Error: '+e.message,'system')}}
+function buttons(rows){const box=document.createElement('div');box.className='opts';for(const r of rows){const b=document.createElement('button');b.textContent=r.title+(r.description?' · '+r.description:'');b.onclick=()=>{box.remove();sendInteractive(r.id,r.title)};box.appendChild(b)}chat.appendChild(box);chat.scrollTop=chat.scrollHeight}
+function renderReplies(replies){for(const m of replies||[]){if(m.text)add(m.text,'bot');if(m.type==='buttons')buttons(m.buttons||[]);if(m.type==='list')buttons(m.rows||[])}}
+async function demoFetch(url,opt={}){const o={...opt,headers:{...(opt.headers||{}),'X-Demo-Key':demoKey}};const r=await fetch(url,o);let d={};try{d=await r.json()}catch(_){throw new Error('Respuesta inválida')};if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d}
+async function loginDemo(){const input=document.getElementById('demoKeyInput');demoKey=(input.value||demoKey).trim();document.getElementById('loginError').textContent='';if(!demoKey){document.getElementById('loginError').textContent='Ingresá la clave.';return}try{const d=await demoFetch('/api/sim/status');localStorage.setItem('tbe_demo_key',demoKey);document.getElementById('businessName').textContent=d.businessName||'Carribar';document.getElementById('login').classList.add('hidden');connectEvents();if(!chat.children.length)add('Demo conectada. Escribí Hola para comenzar.','system')}catch(e){document.getElementById('loginError').textContent=e.message}}
+async function call(input){try{const d=await demoFetch('/api/sim/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,input})});renderReplies(d.replies)}catch(e){add('Error: '+e.message,'system')}}
 async function sendText(){const i=document.getElementById('text');const t=i.value.trim();if(!t)return;i.value='';add(t,'me');await call({type:'text',text:t})}
 async function sendInteractive(id,title){add(title,'me');await call({type:'interactive',id})}
-async function resetChat(){await fetch('/api/sim/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone})});chat.innerHTML='';add('Simulador reiniciado. Escribí Hola para comenzar.','system')}
-function connectEvents(){const status=document.getElementById('status');const es=new EventSource('/api/orders/stream');es.addEventListener('hello',()=>{status.textContent='● Conectado al servidor';status.className='status ok'});es.addEventListener('whatsapp:outbound',ev=>{try{const d=JSON.parse(ev.data);if(String(d.phone)!==phone)return;const m=d.message||{};if(m.text)add(m.text,'bot');if(m.type==='buttons')buttons(m.buttons||[]);if(m.type==='list')buttons(m.rows||[])}catch(_){}});es.onerror=()=>{status.textContent='● Sin conexión';status.className='status'}}
-add('Este es el simulador local. Escribí Hola para comenzar.','system');connectEvents();
+async function resetChat(){try{await demoFetch('/api/sim/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone})});chat.innerHTML='';add('Conversación reiniciada. Escribí Hola para comenzar.','system')}catch(e){add('Error: '+e.message,'system')}}
+function connectEvents(){if(stream)try{stream.close()}catch(_){}const status=document.getElementById('status');stream=new EventSource('/api/sim/stream?demoKey='+encodeURIComponent(demoKey));stream.addEventListener('hello',()=>{status.textContent='● Conectado al carribar';status.className='status ok'});stream.addEventListener('whatsapp:outbound',ev=>{try{const d=JSON.parse(ev.data);if(String(d.phone)!==String(phone))return;const m=d.message||{};if(m.text)add(m.text,'bot');if(m.type==='buttons')buttons(m.buttons||[]);if(m.type==='list')buttons(m.rows||[])}catch(_){}});stream.onerror=()=>{status.textContent='● Reconectando...';status.className='status'}}
+document.getElementById('demoKeyInput').value=demoKey;if(demoKey)loginDemo();
 </script>
 </body>
 </html>
