@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador WhatsApp - TBE Pedidos</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#d9dbd5;font-family:Arial,Helvetica,sans-serif;color:#111}.top{height:70px;background:#075e54;color:white;display:flex;align-items:center;padding:0 18px;font-weight:800;font-size:20px;gap:12px}.top span{font-size:13px;font-weight:400;opacity:.9}.wrap{height:calc(100vh - 70px);max-width:760px;margin:auto;background:#efeae2;display:flex;flex-direction:column;box-shadow:0 0 30px #0002}.toolbar{padding:8px;background:#f0f2f5;display:flex;justify-content:space-between;align-items:center}.toolbar button{border:0;border-radius:8px;padding:9px 12px;font-weight:700}.chat{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:8px}.msg{max-width:82%;padding:9px 11px;border-radius:10px;white-space:pre-wrap;line-height:1.35;box-shadow:0 1px 2px #0002}.bot{background:white;align-self:flex-start}.me{background:#d9fdd3;align-self:flex-end}.system{background:#fff3c4;align-self:center;font-size:12px}.opts{align-self:flex-start;display:flex;flex-direction:column;gap:6px;max-width:82%;width:350px}.opts button{background:white;border:1px solid #d1d5db;border-radius:9px;padding:10px;text-align:left;font-weight:700}.send{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px;background:#f0f2f5}.send input{border:0;border-radius:999px;padding:13px 16px;font-size:16px}.send button{width:48px;border:0;border-radius:50%;background:#00a884;color:white;font-size:22px}.status{font-size:12px;color:#475569}.ok{color:#15803d}
+</style>
+</head>
+<body>
+<div class="top">💬 WhatsApp simulado <span>Cliente de prueba</span></div>
+<div class="wrap">
+  <div class="toolbar"><div class="status" id="status">Conectando...</div><button onclick="resetChat()">↻ Reiniciar conversación</button></div>
+  <div id="chat" class="chat"></div>
+  <div class="send"><input id="text" placeholder="Escribí un mensaje..." onkeydown="if(event.key==='Enter')sendText()"><button onclick="sendText()">➤</button></div>
+</div>
+<script>
+const phone='5491100000000';
+const chat=document.getElementById('chat');
+function add(text,who='bot'){const d=document.createElement('div');d.className='msg '+who;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight}
+function buttons(rows){const box=document.createElement('div');box.className='opts';for(const r of rows){const b=document.createElement('button');b.textContent=r.title+(r.description?' • '+r.description:'');b.onclick=()=>{box.remove();sendInteractive(r.id,r.title)};box.appendChild(b)}chat.appendChild(box);chat.scrollTop=chat.scrollHeight}
+function renderReplies(replies){for(const m of replies||[]){add(m.text,'bot');if(m.type==='buttons')buttons(m.buttons||[]);if(m.type==='list')buttons(m.rows||[])}}
+async function call(input){try{const r=await fetch('/api/sim/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,input})});const d=await r.json();renderReplies(d.replies)}catch(e){add('Error: '+e.message,'system')}}
+async function sendText(){const i=document.getElementById('text');const t=i.value.trim();if(!t)return;i.value='';add(t,'me');await call({type:'text',text:t})}
+async function sendInteractive(id,title){add(title,'me');await call({type:'interactive',id})}
+async function resetChat(){await fetch('/api/sim/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone})});chat.innerHTML='';add('Simulador reiniciado. Escribí Hola para comenzar.','system')}
+function connectEvents(){const status=document.getElementById('status');const es=new EventSource('/api/orders/stream');es.addEventListener('hello',()=>{status.textContent='● Conectado al servidor';status.className='status ok'});es.addEventListener('whatsapp:outbound',ev=>{try{const d=JSON.parse(ev.data);if(String(d.phone)!==phone)return;const m=d.message||{};if(m.text)add(m.text,'bot');if(m.type==='buttons')buttons(m.buttons||[]);if(m.type==='list')buttons(m.rows||[])}catch(_){}});es.onerror=()=>{status.textContent='● Sin conexión';status.className='status'}}
+add('Este es el simulador local. Escribí Hola para comenzar.','system');connectEvents();
+</script>
+</body>
+</html>
