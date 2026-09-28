@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: tbe-pedidos
+    runtime: node
+    plan: starter
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: tbe-pedidos-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+      - key: BUSINESS_TIMEZONE
+        value: America/Argentina/Buenos_Aires
+      - key: ENABLE_SIMULATOR
+        value: "false"
+      - key: TBE_ADMIN_KEY
+        sync: false
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+      - key: META_GRAPH_VERSION
+        value: v26.0

@@ -1,0 +1,91 @@
+TBE PEDIDOS - CONFIGURAR WHATSAPP BUSINESS
+==========================================
+
+El servidor ya esta preparado para WhatsApp Business Platform / Cloud API.
+Las credenciales NO se cargan en la tablet: se guardan como variables de entorno
+privadas en Render.
+
+DATOS QUE VAS A NECESITAR DE META
+---------------------------------
+1. WHATSAPP_PHONE_NUMBER_ID
+   ID del numero de telefono de WhatsApp Business.
+
+2. WHATSAPP_TOKEN
+   Token de acceso con permiso para enviar mensajes por WhatsApp Business.
+   Para produccion conviene usar un token permanente de System User, no el token
+   temporal de prueba.
+
+3. WHATSAPP_APP_SECRET
+   App Secret de la aplicacion de Meta. TBE Pedidos lo usa para validar la firma
+   X-Hub-Signature-256 de los webhooks entrantes.
+
+4. WHATSAPP_VERIFY_TOKEN
+   Lo elegis vos. Debe ser una cadena larga y aleatoria. En Meta tenes que escribir
+   EXACTAMENTE el mismo valor cuando configures el webhook.
+
+5. META_GRAPH_VERSION
+   Queda configurable. El proyecto viene con v26.0 como valor inicial. Si tu panel
+   de Meta indica otra version vigente, cambiala en Render sin tocar el codigo.
+
+VARIABLES EN RENDER
+-------------------
+NODE_ENV=production
+DATA_DIR=/var/data
+BUSINESS_TIMEZONE=America/Argentina/Buenos_Aires
+ENABLE_SIMULATOR=false
+TBE_ADMIN_KEY=<una clave larga elegida por vos>
+WHATSAPP_TOKEN=<token Meta>
+WHATSAPP_PHONE_NUMBER_ID=<phone number id>
+WHATSAPP_VERIFY_TOKEN=<token de verificacion elegido por vos>
+WHATSAPP_APP_SECRET=<app secret Meta>
+META_GRAPH_VERSION=v26.0
+
+WEBHOOK EN META
+---------------
+Callback URL:
+
+  https://TU-SERVICIO.onrender.com/webhook
+
+Verify token:
+
+  El mismo valor de WHATSAPP_VERIFY_TOKEN
+
+Despues de verificar el webhook, suscribi el campo de mensajes de WhatsApp.
+
+SEGURIDAD DE LA TABLET
+----------------------
+TBE_ADMIN_KEY protege pedidos, caja, categorias y productos del servidor publico.
+
+Una vez desplegado el servidor:
+1. Abrir TBE Pedidos en la tablet.
+2. Entrar a Configuracion.
+3. En "URL del servidor" cargar la URL de Render.
+4. En "Clave de la tablet" cargar EXACTAMENTE el TBE_ADMIN_KEY de Render.
+5. Guardar.
+
+La clave queda guardada localmente en esa tablet.
+
+COMPROBACION
+------------
+En Configuracion la tarjeta "WhatsApp Business" debe mostrar:
+
+  WhatsApp configurado
+  Firma Meta: OK
+
+Si dice que falta configurar WhatsApp, revisar las variables del servidor.
+
+PRUEBA REAL
+-----------
+1. Escribir "Hola" al numero de WhatsApp Business.
+2. El bot debe responder: "¿Como te llamas?"
+3. Completar Retiro/Delivery, direccion si corresponde, productos y pago.
+4. Confirmar.
+5. El pedido aparece automaticamente en la tablet y se imprime.
+6. En Pedidos, pasarlo a Preparando y luego Listo.
+7. Al marcar Listo, el servidor envia automaticamente el mensaje al cliente.
+
+NOTA SOBRE EL MENSAJE "LISTO"
+------------------------------
+El aviso normal de pedido listo es un mensaje de atencion al cliente generado dentro
+de la conversacion iniciada por el cliente. Si en el futuro se quisiera enviar mensajes
+fuera de la ventana permitida por Meta, habria que usar una plantilla aprobada.

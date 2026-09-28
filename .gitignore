@@ -1,0 +1,6 @@
+.env
+node_modules/
+data/sessions.json
+data/processed_messages.json
+*.log
+.DS_Store
